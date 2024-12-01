@@ -1,5 +1,26 @@
 import streamlit as st
 from openai import OpenAI
+import spacy
+import nltk
+from PIL import Image
+import requests
+from io import BytesIO
+try:
+    spacy.load("en_core_web_sm")
+except:
+    spacy.cli.download("en_core_web_sm")
+    spacy.load("en_core_web_sm")
+
+# Download NLTK datasets (words and stopwords)
+try:
+    nltk.data.find('corpora/words.zip')
+except:
+    nltk.download("words")
+
+try:
+    nltk.data.find('corpora/stopwords.zip')
+except:
+    nltk.download("stopwords")
 
 # Show title and description.
 st.title("📄 Document question answering")
@@ -21,33 +42,48 @@ else:
 
     # Let the user upload a file via `st.file_uploader`.
     uploaded_file = st.file_uploader(
-        "Upload a document (.txt or .md)", type=("txt", "md")
+        "Upload a document (.txt or .md or .pdf)", type=("txt", "md", "pdf")
     )
 
-    # Ask the user for a question via `st.text_area`.
-    question = st.text_area(
-        "Now ask a question about the document!",
-        placeholder="Can you give me a short summary?",
-        disabled=not uploaded_file,
-    )
 
-    if uploaded_file and question:
 
-        # Process the uploaded file and question.
-        document = uploaded_file.read().decode()
-        messages = [
-            {
-                "role": "user",
-                "content": f"Here's a document: {document} \n\n---\n\n {question}",
-            }
-        ]
+    if uploaded_file is not None:
+        import tempfile
+        from pydparser import ResumeParser
+        # Create a temporary file
+        with tempfile.NamedTemporaryFile(delete=False, suffix=f".{uploaded_file.name.split('.')[-1]}") as tmp_file:
+            # Write the uploaded file content to the temporary file
+            tmp_file.write(uploaded_file.read())
+            temp_file_path = tmp_file.name  # Get the temporary file path
+        
+        try:
+            # Pass the temporary file path to ResumeParser
+            data = ResumeParser(temp_file_path).get_extracted_data()
+            # Display the extracted data
+            st.write(data)
+        finally:
+            # Ensure the temporary file is deleted after processing
+            import os
+            os.remove(temp_file_path)
+
 
         # Generate an answer using the OpenAI API.
-        stream = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=messages,
-            stream=True,
+        response = client.images.generate(
+        model="dall-e-3",
+        prompt="a white siamese cat",
+        size="1024x1024",
+        quality="standard",
+        n=1,
         )
+        image_url = response.data[0].url
 
-        # Stream the response to the app using `st.write_stream`.
-        st.write_stream(stream)
+           # Fetch the image
+        response = requests.get(image_url)
+        if response.status_code == 200:
+            # Open the image from the response content
+            img = Image.open(BytesIO(response.content))
+            
+            # Display the image in Streamlit
+            st.image(img, caption="Generated Image", use_column_width=True)
+        else:
+            st.error("Failed to fetch the image.")
