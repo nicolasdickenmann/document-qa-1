@@ -5,6 +5,9 @@ import nltk
 from PIL import Image
 import requests
 from io import BytesIO
+import json
+
+
 try:
     spacy.load("en_core_web_sm")
 except:
@@ -23,10 +26,10 @@ except:
     nltk.download("stopwords")
 
 # Show title and description.
-st.title("📄 Document question answering")
-st.write(
-    "Upload a document below and ask a question about it – GPT will answer! "
-    "To use this app, you need to provide an OpenAI API key, which you can get [here](https://platform.openai.com/account/api-keys). "
+st.title("🧠 Turn your resume into pure brainrot")
+st.markdown(
+    "Upload your resume below and we will get cooking right away!  \n"
+    "To use this app, you need to provide an OpenAI API key, which you can get [here](https://platform.openai.com/account/api-keys)."
 )
 
 # Ask user for their OpenAI API key via `st.text_input`.
@@ -60,17 +63,41 @@ else:
             # Pass the temporary file path to ResumeParser
             data = ResumeParser(temp_file_path).get_extracted_data()
             # Display the extracted data
-            st.write(data)
+            #st.write(data)
         finally:
             # Ensure the temporary file is deleted after processing
             import os
             os.remove(temp_file_path)
+        
+        del data["name"]
+        del data["email"]
+        del data["mobile_number"]
+
+        filtered_data = {key: value for key, value in data.items() if value is not None}
+
+        # Convert the dictionary to a JSON string for easy reading
+        resume_data = json.dumps(filtered_data, indent=4)
+
+        # Define your prompt
+        prompt = (
+            "I NEED to test how the tool works with extremely simple prompts. DO NOT add any detail, just use it AS-IS: "
+            "Later I will input a resume of a person and your task will be to generate a brainrot meme "
+            "that ridicules who this person will become in the future. The meme should have a "
+            "a line of text. The meme should ridicule the person and be pure brainrot. The person should "
+            "not feel honored but laughed at (in a funny way). You should imagine the person "
+            "as a whole and ridicule his resume so far and smartly ridicule hypocrisy. "
+            "In the following is his parsed resume in a json format, use all information available. It "
+            "is very important that you first fully imagine the person and then create the meme. "
+            "His parsed resume: "
+            + resume_data  # Append the formatted resume to the prompt
+        )
+        #st.write(prompt)
 
 
         # Generate an answer using the OpenAI API.
         response = client.images.generate(
         model="dall-e-3",
-        prompt="a white siamese cat",
+        prompt=prompt,
         size="1024x1024",
         quality="standard",
         n=1,
@@ -84,6 +111,6 @@ else:
             img = Image.open(BytesIO(response.content))
             
             # Display the image in Streamlit
-            st.image(img, caption="Generated Image", use_column_width=True)
+            st.image(img, caption="Academic weapon", use_container_width =True)
         else:
             st.error("Failed to fetch the image.")
