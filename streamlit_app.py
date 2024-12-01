@@ -7,13 +7,6 @@ import requests
 from io import BytesIO
 import json
 
-
-try:
-    spacy.load("en_core_web_sm")
-except:
-    spacy.cli.download("en_core_web_sm")
-    spacy.load("en_core_web_sm")
-
 # Download NLTK datasets (words and stopwords)
 try:
     nltk.data.find('corpora/words.zip')
